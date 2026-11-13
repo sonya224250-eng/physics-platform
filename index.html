@@ -6,7 +6,7 @@
   <title>Физика • Учебная платформа</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
   <link rel="stylesheet" href="styles.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -14,6 +14,19 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <!-- Иллюстрированный фон: небо, облака, солнце и зелёная полянка -->
+  <div class="meadow-bg" aria-hidden="true">
+    <div class="sky-sun"></div>
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <svg class="hills-svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="#7ed957" d="M0,192 C240,110 480,250 720,170 C960,90 1200,220 1440,140 L1440,320 L0,320 Z"></path>
+      <path fill="#65c942" d="M0,235 C300,170 600,285 920,210 C1150,155 1320,240 1440,200 L1440,320 L0,320 Z"></path>
+      <path fill="#51b836" d="M0,275 C380,235 760,305 1140,255 C1290,235 1380,275 1440,260 L1440,320 L0,320 Z"></path>
+    </svg>
+  </div>
+
   <div id="demoBanner" class="demo-banner hidden">
     <div class="container demo-banner-inner">
       <span>
@@ -26,17 +39,30 @@
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
-        <div class="brand-icon" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8">
-            <ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(30 16 16)" />
-            <ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(-30 16 16)" />
-            <ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(90 16 16)" />
-            <circle cx="16" cy="16" r="2.6" fill="currentColor" stroke="none" />
+        <!-- Маскот-атом в стиле иллюстрации -->
+        <div class="brand-mascot" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <!-- ручки и ножки -->
+            <path d="M16 36 C9 34, 7 28, 10 24" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+            <path d="M48 36 C55 34, 57 28, 54 24" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+            <path d="M25 50 L23 59 L18 59" stroke="#1e293b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M39 50 L41 59 L46 59" stroke="#1e293b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- тело -->
+            <circle cx="32" cy="32" r="19" fill="#ff5a5f"/>
+            <ellipse cx="32" cy="32" rx="25" ry="9" transform="rotate(28 32 32)" stroke="#ffd43b" stroke-width="2.5"/>
+            <ellipse cx="32" cy="32" rx="25" ry="9" transform="rotate(-28 32 32)" stroke="#4dabf7" stroke-width="2.5"/>
+            <!-- глазки -->
+            <ellipse cx="27" cy="30" rx="3.2" ry="4.5" fill="#1e293b"/>
+            <ellipse cx="37" cy="30" rx="3.2" ry="4.5" fill="#1e293b"/>
+            <circle cx="28" cy="28.5" r="1.2" fill="#fff"/>
+            <circle cx="38" cy="28.5" r="1.2" fill="#fff"/>
+            <!-- улыбка -->
+            <path d="M28 37 Q32 41 36 37" stroke="#1e293b" stroke-width="2.4" stroke-linecap="round"/>
           </svg>
         </div>
         <div>
           <div id="siteTitle" class="brand-title">Физика • Учебная платформа</div>
-          <div id="teacherSubtitle" class="brand-sub">Уроки, задания и тесты</div>
+          <div id="teacherSubtitle" class="brand-sub">Уроки, задания и весёлые тесты</div>
         </div>
       </div>
 
@@ -51,8 +77,8 @@
       </nav>
 
       <div class="header-actions">
-        <button id="themeToggle" class="icon-btn" title="Переключить тему" aria-label="Переключить тему">
-          <span id="themeIcon">🌙</span>
+        <button id="themeToggle" class="icon-btn" title="Переключить день/ночь" aria-label="Переключить тему">
+          <span id="themeIcon">☀️</span>
         </button>
         <button id="authBtn" class="btn btn-outline btn-sm">Вход для учителя</button>
       </div>
@@ -60,6 +86,50 @@
   </header>
 
   <main class="container main-content">
+    <!-- Приветственная полоса с весёлыми персонажами -->
+    <div class="mascots-strip" aria-hidden="true">
+      <div class="mascot-chip">
+        <svg viewBox="0 0 60 60" fill="none">
+          <path d="M13 33 L6 26 M47 33 L54 26 M24 46 L22 55 L17 55 M36 46 L38 55 L43 55" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 25 L30 11 L46 25 L46 46 L14 46 Z" fill="#82c91e"/>
+          <ellipse cx="25" cy="31" rx="2.8" ry="4" fill="#1e293b"/><ellipse cx="35" cy="31" rx="2.8" ry="4" fill="#1e293b"/>
+          <circle cx="26" cy="29.5" r="1" fill="#fff"/><circle cx="36" cy="29.5" r="1" fill="#fff"/>
+          <path d="M27 38 Q30 41 33 38" stroke="#1e293b" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>Уроки</span>
+      </div>
+      <div class="mascot-chip">
+        <svg viewBox="0 0 60 60" fill="none">
+          <path d="M14 33 L7 28 M46 33 L53 28 M24 46 L21 55 L16 55 M36 46 L39 55 L44 55" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="14" y="16" width="32" height="30" rx="10" fill="#4c6ef5"/>
+          <ellipse cx="25" cy="29" rx="2.8" ry="4" fill="#1e293b"/><ellipse cx="35" cy="29" rx="2.8" ry="4" fill="#1e293b"/>
+          <circle cx="26" cy="27.5" r="1" fill="#fff"/><circle cx="36" cy="27.5" r="1" fill="#fff"/>
+          <path d="M26 36 Q30 40 34 36" stroke="#1e293b" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>Домашки</span>
+      </div>
+      <div class="mascot-chip">
+        <svg viewBox="0 0 60 60" fill="none">
+          <path d="M15 34 L8 27 M45 34 L52 27" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M20 22 C20 12, 40 12, 40 23 C40 30, 30 31, 30 39" stroke="#4dabf7" stroke-width="11" stroke-linecap="round"/>
+          <circle cx="30" cy="49" r="5" fill="#4dabf7"/>
+          <ellipse cx="26" cy="21" rx="2.4" ry="3.4" fill="#1e293b"/><ellipse cx="34" cy="21" rx="2.4" ry="3.4" fill="#1e293b"/>
+          <circle cx="26.8" cy="19.8" r=".9" fill="#fff"/><circle cx="34.8" cy="19.8" r=".9" fill="#fff"/>
+        </svg>
+        <span>Тесты</span>
+      </div>
+      <div class="mascot-chip">
+        <svg viewBox="0 0 60 60" fill="none">
+          <path d="M14 34 L7 27 M46 34 L53 27 M24 46 L22 55 L17 55 M36 46 L38 55 L43 55" stroke="#1e293b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="30" cy="29" r="16" fill="#ff99c8"/>
+          <ellipse cx="25" cy="28" rx="2.8" ry="4" fill="#1e293b"/><ellipse cx="35" cy="28" rx="2.8" ry="4" fill="#1e293b"/>
+          <circle cx="26" cy="26.5" r="1" fill="#fff"/><circle cx="36" cy="26.5" r="1" fill="#fff"/>
+          <path d="M26 35 Q30 39 34 35" stroke="#1e293b" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span>Оценки</span>
+      </div>
+    </div>
+
     <!-- VIEW: LESSONS -->
     <section id="view-lessons" class="view active">
       <div class="section-toolbar">
