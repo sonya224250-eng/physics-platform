@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Физика • Учебная платформа</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="demoBanner" class="demo-banner hidden">
+    <div class="container demo-banner-inner">
+      <span>
+        <strong>Демо-режим:</strong> данные сохраняются только в вашем браузере. Чтобы ученики могли сдавать работы со своих устройств, подключите Supabase в <code>config.js</code>.
+      </span>
+      <button id="resetDemoBtn" class="btn btn-ghost btn-sm" title="Сбросить демо-данные">Сбросить демо</button>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8">
+            <ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(30 16 16)" />
+            <ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(-30 16 16)" />
+            <ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(90 16 16)" />
+            <circle cx="16" cy="16" r="2.6" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div>
+          <div id="siteTitle" class="brand-title">Физика • Учебная платформа</div>
+          <div id="teacherSubtitle" class="brand-sub">Уроки, задания и тесты</div>
+        </div>
+      </div>
+
+      <nav class="main-nav" aria-label="Основная навигация">
+        <button class="nav-pill active" data-view="lessons">Уроки и ДЗ</button>
+        <button class="nav-pill" data-view="tests">Тесты</button>
+        <button class="nav-pill" data-view="grades">Мои оценки</button>
+        <button id="reviewNavBtn" class="nav-pill hidden" data-view="review">
+          Проверка работ
+          <span id="pendingBadge" class="badge hidden">0</span>
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Переключить тему" aria-label="Переключить тему">
+          <span id="themeIcon">🌙</span>
+        </button>
+        <button id="authBtn" class="btn btn-outline btn-sm">Вход для учителя</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <!-- VIEW: LESSONS -->
+    <section id="view-lessons" class="view active">
+      <div class="section-toolbar">
+        <div class="lesson-tabs-wrap" id="lessonTabs" role="tablist" aria-label="Вкладки уроков"></div>
+        <button id="addLessonBtn" class="btn btn-primary btn-sm hidden">+ Новый урок</button>
+      </div>
+
+      <div id="lessonContent" class="lesson-workspace"></div>
+    </section>
+
+    <!-- VIEW: TESTS -->
+    <section id="view-tests" class="view">
+      <div class="section-header">
+        <div>
+          <h1>Тесты по физике</h1>
+          <p class="muted">Выберите тест для прохождения. Варианты ответов проверяются автоматически.</p>
+        </div>
+        <button id="createTestBtn" class="btn btn-primary hidden">+ Создать тест</button>
+      </div>
+      <div id="testsGrid" class="cards-grid"></div>
+    </section>
+
+    <!-- VIEW: STUDENT GRADES -->
+    <section id="view-grades" class="view">
+      <div class="section-header">
+        <div>
+          <h1>Мои оценки и результаты</h1>
+          <p class="muted">Введите фамилию и имя (как при отправке работы), чтобы увидеть оценки и комментарии учителя.</p>
+        </div>
+      </div>
+      <div class="card search-card">
+        <form id="studentSearchForm" class="search-row">
+          <input type="text" id="searchStudentName" class="input" placeholder="Например: Иванов Иван" required />
+          <input type="text" id="searchStudentClass" class="input input-sm" placeholder="Класс (необязательно)" />
+          <button type="submit" class="btn btn-primary">Найти мои работы</button>
+        </form>
+      </div>
+      <div id="studentResultsArea" class="results-area"></div>
+    </section>
+
+    <!-- VIEW: TEACHER REVIEW -->
+    <section id="view-review" class="view">
+      <div class="section-header">
+        <div>
+          <h1>Проверка работ и результаты</h1>
+          <p class="muted">Проверяйте присланные решения домашних заданий и просматривайте результаты тестов.</p>
+        </div>
+        <div class="segmented">
+          <button class="seg-btn active" data-review-tab="submissions">Домашние задания</button>
+          <button class="seg-btn" data-review-tab="test-results">Результаты тестов</button>
+        </div>
+      </div>
+
+      <div id="reviewFilters" class="filter-bar">
+        <select id="filterStatus" class="input input-auto">
+          <option value="all">Все статусы</option>
+          <option value="pending" selected>На проверке</option>
+          <option value="graded">Проверенные</option>
+        </select>
+        <select id="filterLesson" class="input input-auto">
+          <option value="all">Все уроки</option>
+        </select>
+      </div>
+
+      <div id="reviewContainer"></div>
+    </section>
+  </main>
+
+  <!-- MODAL ROOT -->
+  <div id="modalBackdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div id="modalCard" class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">Заголовок</h2>
+        <button id="modalClose" class="icon-btn" aria-label="Закрыть">&times;</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX -->
+  <div id="lightbox" class="lightbox hidden">
+    <button id="lightboxClose" class="lightbox-close" aria-label="Закрыть">&times;</button>
+    <img id="lightboxImg" src="" alt="Просмотр решения" />
+  </div>
+
+  <!-- TOAST -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
