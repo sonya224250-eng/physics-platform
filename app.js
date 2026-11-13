@@ -333,6 +333,7 @@
     $$(".view").forEach(v => v.classList.toggle("active", v.id === `view-${viewName}`));
     if (viewName === "review") renderReviewView();
     if (viewName === "tests") renderTestsView();
+    if (viewName === "ege") renderEgeView();
     if (viewName === "lessons") renderLessonsView();
   }
 
@@ -1244,6 +1245,113 @@
     if (state.activeView === "review") renderReviewView();
   }
 
+  // ---------- EGE Variants (Демидова 2027: 30 вариантов × 26 задач) ----------
+  const EGE_STORAGE_KEY = "physics_platform_ege_demidova_2027";
+  const EGE_VARIANTS_COUNT = 30;
+  const EGE_TASKS_PER_VARIANT = 26;
+
+  function loadEgeProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(EGE_STORAGE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function saveEgeProgress(data) {
+    localStorage.setItem(EGE_STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function renderEgeView() {
+    const grid = $("#egeVariantsGrid");
+    if (!grid) return;
+
+    const progress = loadEgeProgress();
+    let totalDone = 0;
+    const totalMax = EGE_VARIANTS_COUNT * EGE_TASKS_PER_VARIANT;
+
+    for (let v = 1; v <= EGE_VARIANTS_COUNT; v++) {
+      const doneArr = Array.isArray(progress[v]) ? progress[v] : [];
+      totalDone += doneArr.length;
+    }
+
+    $("#egeTotalProgress").textContent = `${totalDone} / ${totalMax}`;
+    $("#egeTotalBar").style.width = `${Math.round((totalDone / totalMax) * 100)}%`;
+
+    const filter = $("#egeFilter")?.value || "all";
+    const cards = [];
+
+    for (let v = 1; v <= EGE_VARIANTS_COUNT; v++) {
+      const doneSet = new Set(Array.isArray(progress[v]) ? progress[v] : []);
+      const count = doneSet.size;
+      if (filter === "done" && count < EGE_TASKS_PER_VARIANT) continue;
+      if (filter === "todo" && count > 0) continue;
+      if (filter === "in-progress" && (count === 0 || count === EGE_TASKS_PER_VARIANT)) continue;
+
+      const pct = Math.round((count / EGE_TASKS_PER_VARIANT) * 100);
+      const taskBtns = [];
+      for (let t = 1; t <= EGE_TASKS_PER_VARIANT; t++) {
+        const isDone = doneSet.has(t);
+        const isPart2 = t >= 21;
+        taskBtns.push(
+          `<button type="button" class="ege-task-btn ${isPart2 ? "part2" : ""} ${isDone ? "done" : ""}" data-variant="${v}" data-task="${t}" title="Задание №${t} (${isPart2 ? "Часть 2" : "Часть 1"})">${t}</button>`
+        );
+      }
+
+      cards.push(`
+        <div class="ege-card">
+          <div class="ege-card-head">
+            <h3>Вариант ${v}</h3>
+            <span class="tag ${count === EGE_TASKS_PER_VARIANT ? "tag-success" : count > 0 ? "tag-primary" : ""}">${count} / ${EGE_TASKS_PER_VARIANT}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${pct}%"></div>
+          </div>
+          <div class="ege-tasks-grid">${taskBtns.join("")}</div>
+          <div class="ege-card-foot">
+            <span>№1–20: Часть 1 · №21–26: Часть 2</span>
+            <button type="button" class="btn btn-outline btn-sm ege-toggle-all" data-variant="${v}">
+              ${count === EGE_TASKS_PER_VARIANT ? "Сбросить" : "Всё решено"}
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    grid.innerHTML = cards.length
+      ? cards.join("")
+      : `<div class="empty-state">Нет вариантов по выбранному фильтру.</div>`;
+
+    $$(".ege-task-btn", grid).forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = Number(btn.dataset.variant);
+        const t = Number(btn.dataset.task);
+        const p = loadEgeProgress();
+        const set = new Set(Array.isArray(p[v]) ? p[v] : []);
+        if (set.has(t)) set.delete(t);
+        else set.add(t);
+        p[v] = Array.from(set).sort((a, b) => a - b);
+        saveEgeProgress(p);
+        renderEgeView();
+      });
+    });
+
+    $$(".ege-toggle-all", grid).forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = Number(btn.dataset.variant);
+        const p = loadEgeProgress();
+        const current = Array.isArray(p[v]) ? p[v] : [];
+        if (current.length === EGE_TASKS_PER_VARIANT) {
+          p[v] = [];
+        } else {
+          p[v] = Array.from({ length: EGE_TASKS_PER_VARIANT }, (_, i) => i + 1);
+        }
+        saveEgeProgress(p);
+        renderEgeView();
+      });
+    });
+  }
+
   // ---------- Event Wiring ----------
   function initTheme() {
     const saved = localStorage.getItem("physics_theme") || "light";
@@ -1300,6 +1408,13 @@
 
     $("#filterStatus").addEventListener("change", renderReviewView);
     $("#filterLesson").addEventListener("change", renderReviewView);
+    $("#egeFilter")?.addEventListener("change", renderEgeView);
+    $("#egeResetAllBtn")?.addEventListener("click", () => {
+      if (!confirm("Сбросить все отметки по вариантам ЕГЭ?")) return;
+      localStorage.removeItem(EGE_STORAGE_KEY);
+      renderEgeView();
+      toast("Отметки вариантов ЕГЭ сброшены");
+    });
 
     $("#modalClose").addEventListener("click", closeModal);
     $("#modalBackdrop").addEventListener("click", e => {
