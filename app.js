@@ -47,6 +47,44 @@
     }
   }
 
+  function formatRichText(text) {
+    const safe = escapeHtml(text || "");
+    return safe.replace(/\[([^\]]+)\]\(((?:https?:\/\/|data:image\/)[^)]+)\)/g, (_, label, url) => {
+      const isImg = /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url) || url.startsWith("data:image/") || /\.(png|jpe?g|gif|webp)$/i.test(label);
+      if (isImg) {
+        return `<img src="${url}" alt="${label}" class="submission-thumb" />`;
+      }
+      return `<a href="${url}" target="_blank" rel="noopener" download class="btn btn-outline btn-sm" style="margin:6px 4px 2px 0;">${label}</a>`;
+    });
+  }
+
+  function wireAttachButton(root, btnSel, inputSel, textareaSel) {
+    const btn = $(btnSel, root);
+    const input = $(inputSel, root);
+    const textarea = $(textareaSel, root);
+    if (!btn || !input || !textarea) return;
+    btn.addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Загрузка файла...";
+      try {
+        const meta = await uploadSolutionFile(file);
+        const prefix = textarea.value.trim() ? "\n" : "";
+        textarea.value += `${prefix}[📎 ${meta.file_name}](${meta.file_url})`;
+        toast(`Файл ${meta.file_name} прикреплён!`);
+      } catch (err) {
+        toast("Ошибка загрузки: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+        input.value = "";
+      }
+    });
+  }
+
   function toast(msg) {
     const box = $("#toastContainer");
     const el = document.createElement("div");
@@ -387,7 +425,7 @@
           }
         </div>
 
-        ${lesson.theory ? `<div class="lesson-theory">${escapeHtml(lesson.theory)}</div>` : ""}
+        ${lesson.theory ? `<div class="lesson-theory">${formatRichText(lesson.theory)}</div>` : ""}
 
         <div class="sub-section-head">
           <h2>Домашние задания (${lessonHws.length})</h2>
@@ -410,7 +448,7 @@
                             ${state.isTeacher ? `<span class="tag">Решений: ${count}</span>` : ""}
                           </div>
                           <h3>${escapeHtml(hw.title)}</h3>
-                          <p style="white-space: pre-wrap;">${escapeHtml(hw.description)}</p>
+                          <div style="white-space: pre-wrap;">${formatRichText(hw.description)}</div>
                         </div>
                         <div class="card-actions">
                           <button class="btn btn-primary btn-sm submit-hw-btn" data-hw-id="${escapeHtml(hw.id)}">Отправить решение</button>
@@ -471,6 +509,12 @@
     });
 
     bindTestCardButtons(contentEl);
+    $$(".submission-thumb", contentEl).forEach(img => {
+      img.addEventListener("click", () => {
+        $("#lightboxImg").src = img.src;
+        $("#lightbox").classList.remove("hidden");
+      });
+    });
     renderMath(contentEl);
   }
 
@@ -724,12 +768,17 @@
         </div>
         <div class="field">
           <label>Теория и материалы (можно использовать формулы LaTeX: $E=mc^2$)</label>
-          <textarea name="theory" class="textarea" placeholder="Конспект, формулы, ссылки на видео...">${escapeHtml(existing?.theory || "")}</textarea>
+          <textarea name="theory" id="lessonTheoryInput" class="textarea" placeholder="Конспект, формулы, ссылки на видео...">${escapeHtml(existing?.theory || "")}</textarea>
+          <div style="margin-top:8px;">
+            <input type="file" id="lessonFileInput" accept="image/*,.jpg,.jpeg,.png,.pdf,.doc,.docx,.ppt,.pptx" class="hidden" />
+            <button type="button" id="lessonAttachBtn" class="btn btn-outline btn-sm">📎 Прикрепить файл (PPTX, JPEG, PDF)</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary" style="width:100%">${existing ? "Сохранить изменения" : "Создать урок"}</button>
       </form>
       `,
       root => {
+        wireAttachButton(root, "#lessonAttachBtn", "#lessonFileInput", "#lessonTheoryInput");
         $("#lessonForm", root).addEventListener("submit", async e => {
           e.preventDefault();
           const payload = {
@@ -764,7 +813,11 @@
         </div>
         <div class="field">
           <label>Условие задачи / описание (поддерживается LaTeX $...$)</label>
-          <textarea name="description" class="textarea" required>${escapeHtml(existing?.description || "")}</textarea>
+          <textarea name="description" id="hwDescInput" class="textarea" required>${escapeHtml(existing?.description || "")}</textarea>
+          <div style="margin-top:8px;">
+            <input type="file" id="hwTeacherFileInput" accept="image/*,.jpg,.jpeg,.png,.pdf,.doc,.docx,.ppt,.pptx" class="hidden" />
+            <button type="button" id="hwAttachBtn" class="btn btn-outline btn-sm">📎 Прикрепить файл (PPTX, JPEG, PDF)</button>
+          </div>
         </div>
         <div style="display:flex; gap:12px;">
           <div class="field" style="flex:1;">
@@ -780,6 +833,7 @@
       </form>
       `,
       root => {
+        wireAttachButton(root, "#hwAttachBtn", "#hwTeacherFileInput", "#hwDescInput");
         $("#hwForm", root).addEventListener("submit", async e => {
           e.preventDefault();
           const payload = {
@@ -826,10 +880,10 @@
           <textarea name="answer_text" class="textarea" placeholder="Напишите ход решения или пояснение..."></textarea>
         </div>
         <div class="field">
-          <label>Фото тетради или файл (необязательно)</label>
+          <label>Фото или файл с решением (JPEG, PNG, PDF, PPTX, DOCX — необязательно)</label>
           <div id="dropzone" class="dropzone">
-            <input type="file" id="hwFileInput" accept="image/*,.pdf,.doc,.docx" class="hidden" />
-            <div id="dropzoneText">Нажмите или перетащите фото/PDF сюда</div>
+            <input type="file" id="hwFileInput" accept="image/*,.jpg,.jpeg,.png,.pdf,.doc,.docx,.ppt,.pptx" class="hidden" />
+            <div id="dropzoneText">Нажмите или перетащите файл (JPEG, PPTX, PDF) сюда</div>
           </div>
         </div>
         <button type="submit" id="submitHwBtn" class="btn btn-primary" style="width:100%">Отправить на проверку</button>
