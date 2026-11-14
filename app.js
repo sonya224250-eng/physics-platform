@@ -954,7 +954,7 @@
 
   function openTestBuilderModal(defaultLessonId = "") {
     const questions = [
-      { text: "", type: "single", options: ["", ""], correct: [0], correctText: "", points: 1 }
+      { text: "", imageUrl: "", type: "single", options: ["", ""], correct: [0], correctText: "", points: 1 }
     ];
 
     openModal(
@@ -999,6 +999,12 @@
                   <div class="field">
                     <input type="text" class="input q-text" placeholder="Текст вопроса (можно с LaTeX $...$)" value="${escapeHtml(q.text)}" required />
                   </div>
+                  <div class="field" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="file" class="q-img-input hidden" accept="image/*,.jpg,.jpeg,.png,.webp,.gif" />
+                    <button type="button" class="btn btn-outline btn-sm q-img-btn">🖼️ ${q.imageUrl ? "Заменить картинку" : "Прикрепить картинку"}</button>
+                    ${q.imageUrl ? `<button type="button" class="btn btn-danger btn-sm q-img-remove">Убрать</button>` : ""}
+                    ${q.imageUrl ? `<img src="${escapeHtml(q.imageUrl)}" alt="Превью" class="submission-thumb" style="max-height:90px; margin:0;" />` : ""}
+                  </div>
                   <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <select class="input q-type" style="flex:1;">
                       <option value="single" ${q.type === "single" ? "selected" : ""}>Один верный вариант</option>
@@ -1038,6 +1044,28 @@
             const qi = Number(item.dataset.qi);
             const q = questions[qi];
             $(".q-text", item).addEventListener("input", e => (q.text = e.target.value));
+            $(".q-img-btn", item).addEventListener("click", () => $(".q-img-input", item).click());
+            $(".q-img-input", item).addEventListener("change", async e => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const btn = $(".q-img-btn", item);
+              btn.disabled = true;
+              btn.textContent = "Загрузка...";
+              try {
+                const meta = await uploadSolutionFile(file);
+                q.imageUrl = meta.file_url;
+                renderBuilderQuestions();
+                toast("Картинка прикреплена");
+              } catch (err) {
+                toast("Ошибка загрузки: " + err.message);
+                btn.disabled = false;
+                btn.textContent = "🖼️ Прикрепить картинку";
+              }
+            });
+            $(".q-img-remove", item)?.addEventListener("click", () => {
+              q.imageUrl = "";
+              renderBuilderQuestions();
+            });
             $(".q-points", item).addEventListener("input", e => (q.points = Number(e.target.value) || 1));
             $(".q-type", item).addEventListener("change", e => {
               q.type = e.target.value;
@@ -1089,7 +1117,7 @@
         renderBuilderQuestions();
 
         $("#addQuestionBtn", root).addEventListener("click", () => {
-          questions.push({ text: "", type: "single", options: ["", ""], correct: [0], correctText: "", points: 1 });
+          questions.push({ text: "", imageUrl: "", type: "single", options: ["", ""], correct: [0], correctText: "", points: 1 });
           renderBuilderQuestions();
         });
 
@@ -1129,10 +1157,14 @@
         </div>
         ${test.questions
           .map((q, qi) => {
+            const imgHtml = q.imageUrl
+              ? `<img src="${escapeHtml(q.imageUrl)}" alt="Иллюстрация к вопросу ${qi + 1}" class="submission-thumb" />`
+              : "";
             if (q.type === "text") {
               return `
                 <div class="quiz-question-card">
                   <div><strong>${qi + 1}.</strong> ${escapeHtml(q.text)} <span class="tag">${q.points || 1} б.</span></div>
+                  ${imgHtml}
                   <input type="text" class="input" style="margin-top:10px;" name="q_${qi}" placeholder="Введите ответ..." required />
                 </div>
               `;
@@ -1141,6 +1173,7 @@
             return `
               <div class="quiz-question-card">
                 <div><strong>${qi + 1}.</strong> ${escapeHtml(q.text)} <span class="tag">${q.points || 1} б.</span></div>
+                ${imgHtml}
                 ${q.options
                   .map(
                     (opt, oi) => `
@@ -1159,6 +1192,12 @@
       </form>
       `,
       root => {
+        $$(".submission-thumb", root).forEach(img => {
+          img.addEventListener("click", () => {
+            $("#lightboxImg").src = img.src;
+            $("#lightbox").classList.remove("hidden");
+          });
+        });
         $("#takeTestForm", root).addEventListener("submit", async e => {
           e.preventDefault();
           const fd = new FormData(e.target);
